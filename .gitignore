@@ -1,0 +1,14 @@
+﻿.venv/
+__pycache__/
+.ipynb_checkpoints/
+data/
+results/
+*.parquet
+*.csv
+*.csv.gz
+
+etl-bench/data/
+*.csv
+*.parquet
+*.json
+results/
