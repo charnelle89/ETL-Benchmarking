@@ -10,7 +10,7 @@ import pandas as pd
 from pyspark.sql import SparkSession, functions as F
 
 # -----------------------------
-# Paths (ADAPTE SI BESOIN)
+# Paths 
 # -----------------------------
 CSV = Path(r"C:\Users\charn\Desktop\Master\Forschungsprojekt\etl-bench\data\raw\1GB\yellow_tripdata_2016-03.csv")
 OUT_DIR = Path(r"C:\Users\charn\Desktop\Master\Forschungsprojekt\etl-bench\data\silver\spark\1GB")
@@ -24,13 +24,13 @@ DATASET_NAME = "nyc_yellow_2016_03_Spark"
 def peak_rss_mb() -> float:
     """Approx peak memory for current process + children (Spark spawns subprocess/JVM)."""
     p = psutil.Process(os.getpid())
-    rss = p.memory_info().rss
+    peak_ram = p.memory_info().peak_wset
     for c in p.children(recursive=True):
         try:
-            rss += c.memory_info().rss
+            peak_ram += c.memory_info().peak_wset
         except Exception:
             pass
-    return rss / (1024 * 1024)
+    return peak_ram / (1024 * 1024)
 
 
 def main():
@@ -78,7 +78,7 @@ def main():
         .filter(F.col("total_amount").isNotNull())
         .filter(F.col("total_amount") >= 0)
     )
-    # petite action pour matérialiser le plan (optionnel mais utile)
+    # petite action pour matérialiser le plan 
     _ = df2.select(F.count(F.lit(1))).collect()
     t_clean = time.time() - t_clean0
 

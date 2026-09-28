@@ -1,5 +1,7 @@
 import time, json, uuid
 from pathlib import Path
+import psutil
+import os
 from datetime import datetime
 import duckdb
 import os
@@ -68,6 +70,9 @@ def main():
 
     # Metrics
     latency = time.time() - t0
+    process = psutil.Process(os.getpid())
+    peak_ram_mb = process.memory_info().peak_wset / (1024 * 1024)
+    
     run_id = str(uuid.uuid4())
     m = {
       "run_id": run_id,
@@ -80,9 +85,10 @@ def main():
       "t_agg_s": round(t_agg,3),
       "t_export_s": round(t_export,3),
       "latency_total_s": round(latency,3),
+      "peak_rss_mb": round(peak_ram_mb, 3),
       "ok": True
     }
-    out_dir = Path(f"etl-bench/results/Duck_DB/{run_id}"); out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = Path(f"etl-bench/results/Duck_DB/1GB/{run_id}"); out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir/"DuckDB_1GB_metrics.json").write_text(json.dumps(m, indent=2), encoding="utf-8")
     print(f"[OK] y/m partitions -> {OUT} | metrics -> {out_dir/'metrics.json'} | total={m['latency_total_s']}s")
 

@@ -1,4 +1,6 @@
 import time, json, uuid
+import psutil
+import os
 from pathlib import Path
 from datetime import datetime, UTC
 import duckdb
@@ -91,6 +93,9 @@ def main():
     bytes_in = sum(p.stat().st_size for p in DATA_DIR.glob("*.csv"))
     volume_gb_disk = bytes_in / 1e9
     throughput_gb_min = volume_gb_disk / (latency / 60.0)
+    
+    process = psutil.Process(os.getpid())
+    peak_ram_mb = process.memory_info().peak_wset / (1024 * 1024)
 
     metrics = {
         "run_id": run_id,
@@ -104,6 +109,7 @@ def main():
         "t_export_s": round(t_export, 3),
         "latency_total_s": round(latency, 3),
         "throughput_gb_min": round(throughput_gb_min, 3),
+        "peak_rss_mb": round(peak_ram_mb, 3),
         "ok": True
     }
 

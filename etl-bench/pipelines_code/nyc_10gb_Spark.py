@@ -6,6 +6,9 @@ import psutil
 import pandas as pd
 from pyspark.sql import SparkSession, functions as F
 
+# -----------------------------
+# INPUT / OUTPUT / METRICS
+# -----------------------------
 DATA_DIR = Path(r"C:\Users\charn\Desktop\Master\Forschungsprojekt\etl-bench\data\raw\10GB")
 FILES = [str(p) for p in DATA_DIR.glob("*.csv")]
 
@@ -13,17 +16,24 @@ OUT_DIR = Path(r"C:\Users\charn\Desktop\Master\Forschungsprojekt\etl-bench\data\
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 RESULTS_DIR = Path(r"C:\Users\charn\Desktop\Master\Forschungsprojekt\etl-bench\results\Spark\10GB")
-DATASET_NAME = "nyc_yellow_10gb"
+DATASET_NAME = "nyc_yellow_7gb"
 
 def peak_rss_mb():
+    """
+    Capture le pic historique de RAM sous Windows (peak_wset).
+    Additionne le processus Python et ses enfants (la JVM Spark).
+    """
     p = psutil.Process(os.getpid())
-    rss = p.memory_info().rss
+    # peak_wset donne le pic maximum historique sous Windows !
+    peak_ram = p.memory_info().peak_wset
+    
     for c in p.children(recursive=True):
         try:
-            rss += c.memory_info().rss
+            peak_ram += c.memory_info().peak_wset
         except Exception:
             pass
-    return rss / (1024*1024)
+            
+    return peak_ram / (1024 * 1024)
 
 def main():
     print("[RUN] Spark 10GB (Windows safe)")
@@ -34,7 +44,6 @@ def main():
 
     run_id = str(uuid.uuid4())
     t0 = time.time()
-    rss0 = peak_rss_mb()
 
     spark = (SparkSession.builder
              .master("local[*]")
@@ -88,7 +97,11 @@ def main():
     t_export = time.time() - t_e0
 
     latency = time.time() - t0
-    rss_peak = max(rss0, peak_rss_mb())
+    
+    # ==========================================
+    # CAPTURE DU PIC DE MEMOIRE MAXIMUM
+    # ==========================================
+    rss_peak = peak_rss_mb()
 
     # volume disque = somme des fichiers
     bytes_in = sum(Path(f).stat().st_size for f in FILES)
@@ -116,7 +129,7 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "Spark_10GB_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
 
-    print(f"[OK] Spark 10GB done | wrote={out_parquet} | metrics={out_dir/'metrics.json'} | total={metrics['latency_total_s']}s")
+    print(f"[OK] Spark 10GB done | wrote={out_parquet} | metrics={out_dir/'metrics.json'} | total={metrics['latency_total_s']}s | RAM Peak={metrics['peak_rss_mb']} MB")
     spark.stop()
 
 if __name__ == "__main__":
